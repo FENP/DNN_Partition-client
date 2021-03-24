@@ -8,6 +8,9 @@ from thrift.transport import TSocket
 from thrift.transport import TTransport
 from thrift.protocol import TBinaryProtocol
 from thrift.server import TServer
+import pickle
+import numpy as np
+from io import BytesIO
 
 from learning import collaborativeIntelligence
 
@@ -15,8 +18,13 @@ __HOST = 'localhost'
 __PORT = 9090
 
 class CollaborativeIntelligenceHandler(object):
-    def inference(self, data):
-        print(data)
+    def partition(self, init):
+        print(init)
+    def inference(self, np_bytes):
+        #load_bytes = BytesIO(np_bytes)
+        #loaded_np = np.load(load_bytes, allow_pickle=True)
+        loaded_np = pickle.loads(np_bytes)
+        print(loaded_np)
         return 619
 
 

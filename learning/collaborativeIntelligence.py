@@ -19,10 +19,18 @@ all_structs = []
 
 
 class Iface(object):
-    def inference(self, middle_result):
+    def partition(self, partitionResult):
         """
         Parameters:
-         - middle_result
+         - partitionResult
+
+        """
+        pass
+
+    def inference(self, middleResult):
+        """
+        Parameters:
+         - middleResult
 
         """
         pass
@@ -35,19 +43,49 @@ class Client(Iface):
             self._oprot = oprot
         self._seqid = 0
 
-    def inference(self, middle_result):
+    def partition(self, partitionResult):
         """
         Parameters:
-         - middle_result
+         - partitionResult
 
         """
-        self.send_inference(middle_result)
+        self.send_partition(partitionResult)
+        self.recv_partition()
+
+    def send_partition(self, partitionResult):
+        self._oprot.writeMessageBegin('partition', TMessageType.CALL, self._seqid)
+        args = partition_args()
+        args.partitionResult = partitionResult
+        args.write(self._oprot)
+        self._oprot.writeMessageEnd()
+        self._oprot.trans.flush()
+
+    def recv_partition(self):
+        iprot = self._iprot
+        (fname, mtype, rseqid) = iprot.readMessageBegin()
+        if mtype == TMessageType.EXCEPTION:
+            x = TApplicationException()
+            x.read(iprot)
+            iprot.readMessageEnd()
+            raise x
+        result = partition_result()
+        result.read(iprot)
+        iprot.readMessageEnd()
+        return
+
+    def inference(self, middleResult):
+        """
+        Parameters:
+         - middleResult
+
+        """
+        self.send_inference(middleResult)
         return self.recv_inference()
 
-    def send_inference(self, middle_result):
+    def send_inference(self, middleResult):
         self._oprot.writeMessageBegin('inference', TMessageType.CALL, self._seqid)
         args = inference_args()
-        args.middle_result = middle_result
+        args.middleResult = middleResult
         args.write(self._oprot)
         self._oprot.writeMessageEnd()
         self._oprot.trans.flush()
@@ -72,6 +110,7 @@ class Processor(Iface, TProcessor):
     def __init__(self, handler):
         self._handler = handler
         self._processMap = {}
+        self._processMap["partition"] = Processor.process_partition
         self._processMap["inference"] = Processor.process_inference
         self._on_message_begin = None
 
@@ -95,13 +134,36 @@ class Processor(Iface, TProcessor):
             self._processMap[name](self, seqid, iprot, oprot)
         return True
 
+    def process_partition(self, seqid, iprot, oprot):
+        args = partition_args()
+        args.read(iprot)
+        iprot.readMessageEnd()
+        result = partition_result()
+        try:
+            self._handler.partition(args.partitionResult)
+            msg_type = TMessageType.REPLY
+        except TTransport.TTransportException:
+            raise
+        except TApplicationException as ex:
+            logging.exception('TApplication exception in handler')
+            msg_type = TMessageType.EXCEPTION
+            result = ex
+        except Exception:
+            logging.exception('Unexpected exception in handler')
+            msg_type = TMessageType.EXCEPTION
+            result = TApplicationException(TApplicationException.INTERNAL_ERROR, 'Internal error')
+        oprot.writeMessageBegin("partition", msg_type, seqid)
+        result.write(oprot)
+        oprot.writeMessageEnd()
+        oprot.trans.flush()
+
     def process_inference(self, seqid, iprot, oprot):
         args = inference_args()
         args.read(iprot)
         iprot.readMessageEnd()
         result = inference_result()
         try:
-            result.success = self._handler.inference(args.middle_result)
+            result.success = self._handler.inference(args.middleResult)
             msg_type = TMessageType.REPLY
         except TTransport.TTransportException:
             raise
@@ -121,16 +183,16 @@ class Processor(Iface, TProcessor):
 # HELPER FUNCTIONS AND STRUCTURES
 
 
-class inference_args(object):
+class partition_args(object):
     """
     Attributes:
-     - middle_result
+     - partitionResult
 
     """
 
 
-    def __init__(self, middle_result=None,):
-        self.middle_result = middle_result
+    def __init__(self, partitionResult=None,):
+        self.partitionResult = partitionResult
 
     def read(self, iprot):
         if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
@@ -143,12 +205,12 @@ class inference_args(object):
                 break
             if fid == 1:
                 if ftype == TType.MAP:
-                    self.middle_result = {}
+                    self.partitionResult = {}
                     (_ktype1, _vtype2, _size0) = iprot.readMapBegin()
                     for _i4 in range(_size0):
                         _key5 = iprot.readString().decode('utf-8', errors='replace') if sys.version_info[0] == 2 else iprot.readString()
                         _val6 = iprot.readByte()
-                        self.middle_result[_key5] = _val6
+                        self.partitionResult[_key5] = _val6
                     iprot.readMapEnd()
                 else:
                     iprot.skip(ftype)
@@ -161,11 +223,11 @@ class inference_args(object):
         if oprot._fast_encode is not None and self.thrift_spec is not None:
             oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
             return
-        oprot.writeStructBegin('inference_args')
-        if self.middle_result is not None:
-            oprot.writeFieldBegin('middle_result', TType.MAP, 1)
-            oprot.writeMapBegin(TType.STRING, TType.BYTE, len(self.middle_result))
-            for kiter7, viter8 in self.middle_result.items():
+        oprot.writeStructBegin('partition_args')
+        if self.partitionResult is not None:
+            oprot.writeFieldBegin('partitionResult', TType.MAP, 1)
+            oprot.writeMapBegin(TType.STRING, TType.BYTE, len(self.partitionResult))
+            for kiter7, viter8 in self.partitionResult.items():
                 oprot.writeString(kiter7.encode('utf-8') if sys.version_info[0] == 2 else kiter7)
                 oprot.writeByte(viter8)
             oprot.writeMapEnd()
@@ -186,10 +248,115 @@ class inference_args(object):
 
     def __ne__(self, other):
         return not (self == other)
+all_structs.append(partition_args)
+partition_args.thrift_spec = (
+    None,  # 0
+    (1, TType.MAP, 'partitionResult', (TType.STRING, 'UTF8', TType.BYTE, None, False), None, ),  # 1
+)
+
+
+class partition_result(object):
+
+
+    def read(self, iprot):
+        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
+            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
+            return
+        iprot.readStructBegin()
+        while True:
+            (fname, ftype, fid) = iprot.readFieldBegin()
+            if ftype == TType.STOP:
+                break
+            else:
+                iprot.skip(ftype)
+            iprot.readFieldEnd()
+        iprot.readStructEnd()
+
+    def write(self, oprot):
+        if oprot._fast_encode is not None and self.thrift_spec is not None:
+            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
+            return
+        oprot.writeStructBegin('partition_result')
+        oprot.writeFieldStop()
+        oprot.writeStructEnd()
+
+    def validate(self):
+        return
+
+    def __repr__(self):
+        L = ['%s=%r' % (key, value)
+             for key, value in self.__dict__.items()]
+        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
+
+    def __ne__(self, other):
+        return not (self == other)
+all_structs.append(partition_result)
+partition_result.thrift_spec = (
+)
+
+
+class inference_args(object):
+    """
+    Attributes:
+     - middleResult
+
+    """
+
+
+    def __init__(self, middleResult=None,):
+        self.middleResult = middleResult
+
+    def read(self, iprot):
+        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
+            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
+            return
+        iprot.readStructBegin()
+        while True:
+            (fname, ftype, fid) = iprot.readFieldBegin()
+            if ftype == TType.STOP:
+                break
+            if fid == 1:
+                if ftype == TType.STRING:
+                    self.middleResult = iprot.readBinary()
+                else:
+                    iprot.skip(ftype)
+            else:
+                iprot.skip(ftype)
+            iprot.readFieldEnd()
+        iprot.readStructEnd()
+
+    def write(self, oprot):
+        if oprot._fast_encode is not None and self.thrift_spec is not None:
+            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
+            return
+        oprot.writeStructBegin('inference_args')
+        if self.middleResult is not None:
+            oprot.writeFieldBegin('middleResult', TType.STRING, 1)
+            oprot.writeBinary(self.middleResult)
+            oprot.writeFieldEnd()
+        oprot.writeFieldStop()
+        oprot.writeStructEnd()
+
+    def validate(self):
+        return
+
+    def __repr__(self):
+        L = ['%s=%r' % (key, value)
+             for key, value in self.__dict__.items()]
+        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
+
+    def __ne__(self, other):
+        return not (self == other)
 all_structs.append(inference_args)
 inference_args.thrift_spec = (
     None,  # 0
-    (1, TType.MAP, 'middle_result', (TType.STRING, 'UTF8', TType.BYTE, None, False), None, ),  # 1
+    (1, TType.STRING, 'middleResult', 'BINARY', None, ),  # 1
 )
 
 

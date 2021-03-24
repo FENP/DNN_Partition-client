@@ -24,7 +24,8 @@ if len(sys.argv) <= 1 or sys.argv[1] == '--help':
     print('Usage: ' + sys.argv[0] + ' [-h host[:port]] [-u url] [-f[ramed]] [-s[sl]] [-novalidate] [-ca_certs certs] [-keyfile keyfile] [-certfile certfile] function [arg1 [arg2...]]')
     print('')
     print('Functions:')
-    print('  i32 inference( middle_result)')
+    print('  void partition( partitionResult)')
+    print('  i32 inference(string middleResult)')
     print('')
     sys.exit(0)
 
@@ -104,11 +105,17 @@ protocol = TBinaryProtocol(transport)
 client = collaborativeIntelligence.Client(protocol)
 transport.open()
 
-if cmd == 'inference':
+if cmd == 'partition':
+    if len(args) != 1:
+        print('partition requires 1 args')
+        sys.exit(1)
+    pp.pprint(client.partition(eval(args[0]),))
+
+elif cmd == 'inference':
     if len(args) != 1:
         print('inference requires 1 args')
         sys.exit(1)
-    pp.pprint(client.inference(eval(args[0]),))
+    pp.pprint(client.inference(args[0],))
 
 else:
     print('Unrecognized method %s' % cmd)

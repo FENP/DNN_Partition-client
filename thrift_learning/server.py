@@ -9,6 +9,7 @@ from thrift.transport import TTransport
 from thrift.protocol import TBinaryProtocol
 from thrift.server import TServer
 import pickle
+import torch
 import numpy as np
 from io import BytesIO
 
@@ -23,7 +24,7 @@ class CollaborativeIntelligenceHandler(object):
     def inference(self, np_bytes):
         #load_bytes = BytesIO(np_bytes)
         #loaded_np = np.load(load_bytes, allow_pickle=True)
-        loaded_np = pickle.loads(np_bytes)
+        loaded_np = pickle.loads(np_bytes['layer1'])
         print(loaded_np)
         return 619
 

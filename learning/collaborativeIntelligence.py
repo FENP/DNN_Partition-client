@@ -319,8 +319,14 @@ class inference_args(object):
             if ftype == TType.STOP:
                 break
             if fid == 1:
-                if ftype == TType.STRING:
-                    self.middleResult = iprot.readBinary()
+                if ftype == TType.MAP:
+                    self.middleResult = {}
+                    (_ktype10, _vtype11, _size9) = iprot.readMapBegin()
+                    for _i13 in range(_size9):
+                        _key14 = iprot.readString().decode('utf-8', errors='replace') if sys.version_info[0] == 2 else iprot.readString()
+                        _val15 = iprot.readBinary()
+                        self.middleResult[_key14] = _val15
+                    iprot.readMapEnd()
                 else:
                     iprot.skip(ftype)
             else:
@@ -334,8 +340,12 @@ class inference_args(object):
             return
         oprot.writeStructBegin('inference_args')
         if self.middleResult is not None:
-            oprot.writeFieldBegin('middleResult', TType.STRING, 1)
-            oprot.writeBinary(self.middleResult)
+            oprot.writeFieldBegin('middleResult', TType.MAP, 1)
+            oprot.writeMapBegin(TType.STRING, TType.STRING, len(self.middleResult))
+            for kiter16, viter17 in self.middleResult.items():
+                oprot.writeString(kiter16.encode('utf-8') if sys.version_info[0] == 2 else kiter16)
+                oprot.writeBinary(viter17)
+            oprot.writeMapEnd()
             oprot.writeFieldEnd()
         oprot.writeFieldStop()
         oprot.writeStructEnd()
@@ -356,7 +366,7 @@ class inference_args(object):
 all_structs.append(inference_args)
 inference_args.thrift_spec = (
     None,  # 0
-    (1, TType.STRING, 'middleResult', 'BINARY', None, ),  # 1
+    (1, TType.MAP, 'middleResult', (TType.STRING, 'UTF8', TType.STRING, 'BINARY', False), None, ),  # 1
 )
 
 

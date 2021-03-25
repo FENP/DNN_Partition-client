@@ -7,6 +7,7 @@ from thrift.protocol import TBinaryProtocol
 import numpy as np
 from io import BytesIO
 import pickle
+import torch
 
 from learning import collaborativeIntelligence
 
@@ -25,11 +26,12 @@ transport.open()
 
 client.partition({'layer1': 1, 'layer2': 2})
 
-x = np.array([[0, 1], [2, 3]])
+#x = np.array([[0, 1], [2, 3]])
 #np_bytes = BytesIO()
 #np.save(np_bytes, x, allow_pickle=True)
 #client.inference(np_bytes.getvalue())
-client.inference(pickle.dumps(x))
+t = torch.rand(3,3)
+client.inference({'layer1': pickle.dumps(t)})
 
 #print(sys.getsizeof(np_bytes.getvalue()))
 

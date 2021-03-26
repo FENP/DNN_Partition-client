@@ -24,9 +24,11 @@ struct layer {
 	float execute_time_l;   // 本地执行时间（ms）
     float execute_time_s;   // 服务端执行时间（ms）
     float data_size;        // 输出数据大小（MB）
-	layer(string _name, float _loading_time, float _execute_time_l, float _execute_time_s, float _data_size): \
+    float energy_consumption;// 本地执行能耗
+	layer(string _name, float _loading_time, float _execute_time_l, float _execute_time_s, float _data_size, \
+    float _energy_consumption): \
     name(_name), loading_time(_loading_time), execute_time_l(_execute_time_l), execute_time_s(_execute_time_s), \
-    data_size(_data_size), status(-1){}
+    data_size(_data_size), energy_consumption(_energy_consumption), status(-1){}
 	layer(){}
 };
 

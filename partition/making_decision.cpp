@@ -55,6 +55,24 @@ struct Dinic {
         }
     }
 
+    /* 填充Edge权重，分别以时间或能耗为衡量指标 */
+    void fillEdge(bool is_time) {
+        for(Edge& edge: edges) {
+            if(edge.from == S) {
+                if(is_time)
+                    edge.cap = layers[edge.to].execute_time_s;
+                else
+                    edge.cap = 0;
+            }
+            else if(edge.to == L) {
+                if(is_time)
+                    edge.cap = layers[edge.from].execute_time_l;
+                else
+                    edge.cap = layers[edge.from].energy_consumption;                
+            }
+        }
+    }
+
     bool BFS() {
         fill(vis.begin(), vis.end(), false);
         queue<int> Q;
@@ -171,8 +189,8 @@ void build_layer(ifstream &ifs) {
         vector<string> list(sregex_token_iterator(line.begin(), line.end(), re, -1),
             sregex_token_iterator());
         if(list.size() == COLUMN_NUM) {
-            layers.push_back(layer(list[0], stringToNum<float>(list[1]), \
-                stringToNum<float>(list[3]), stringToNum<float>(list[4]), stringToNum<float>(list[2])));
+            layers.push_back(layer(list[0], stringToNum<float>(list[1]), stringToNum<float>(list[3]), \
+            stringToNum<float>(list[4]), stringToNum<float>(list[2]), stringToNum<float>(list[5])));
             name2num[list[0]] = N++;
         }
     }
@@ -233,6 +251,7 @@ void init_dag(const char* csv_path, const char* dag_path) {
 
     // 初始化DC
     DC.init(V, S, L);
+    // 默认衡量指标为时间
     for(int i = 0; i < V; i++) {
         if(i < N) {
             for(auto& v : graph[i]) {

@@ -1,8 +1,10 @@
+import sys
 import time
 import ctypes
 import torch
 
-import pytorch
+sys.path.append('..')
+import pytorchtool
 
 from thrift.transport import TSocket
 from thrift.transport import TTransport
@@ -18,7 +20,7 @@ def measureBandWidth():
     # 从trace文件中读取
     return 1
 
-def startClient(HOST, PORT):
+def startClient(host, port):
     tsocket = TSocket.TSocket(__HOST, __PORT)
     transport = TTransport.TBufferedTransport(tsocket)
     protocol = TBinaryProtocol.TBinaryProtocol(transport)
@@ -48,7 +50,7 @@ def readImage(path_img):
 
 def getLayers(dag_path):
     # 通过读取dag文件获得模型各层名称
-    layerState = defaultdict(list)
+    layerState = defaultdict(int)
     for line in open(dag_path, 'r'):
         name = line.split(' ', 1)[0]
         layerState[name] = 0
@@ -66,7 +68,7 @@ class model:
 
         if self.model_name in 'inception':
             self.model_name = 'inception'
-            self.path = "./model_weight/inception_v3/inception_v3_google-1a9a5a14.pth"
+            self.path = "../pytorchtool/model_weight/inception_v3/inception_v3_google-1a9a5a14.pth"
 
             model = models.Inception3(aux_logits=False, transform_input=False, 
                                     init_weights=False)
@@ -74,7 +76,7 @@ class model:
             self.model = model
         elif self.model_name in 'alexnet':
             self.model_name = 'alexnet'
-            self.path = "./model_weight/alexnet/alexnet-owt-4df8aa71.pth"
+            self.path = "../pytorchtool/model_weight/alexnet/alexnet-owt-4df8aa71.pth"
             
             model = models.alexnet(False)
             model.eval()
@@ -118,6 +120,9 @@ def main():
     csv = ctypes.c_char_p(bytes(csv_path, 'utf-8'))
     dag = ctypes.c_char_p(bytes(dag_path, 'utf-8'))
     T.init_dag(csv, dag)
+
+    # 连接服务端
+    transport, client = startClient(host, port)
 
     for i in range(1, 6):
         print("第", str(i), "次推理")

@@ -13,7 +13,7 @@
 
 using namespace std;
 
-#define COLUMN_NUM 5    // csv文件列数
+#define COLUMN_NUM 6    // csv文件列数
 #define MIN_BANDWIDTH 0         // 最小带宽，小于等于此值将直接选择在本地推理
 #define MAX_BANDWIDTH 10000     // 最大带宽，大于等于此值将直接选择在边缘推理
 

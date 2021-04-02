@@ -283,7 +283,6 @@ void resetStatus() {
 
 /* 根据网络带宽指定卸载策略 */
 void make_partition(float bandwidth) {
-    cout << "bandwidth: " << bandwidth << endl;
     int option = bandwidth > MIN_BANDWIDTH ? (bandwidth < MAX_BANDWIDTH ? 0 : 1) : -1;
     if(option == 0) {
         DC.updateEdge(bandwidth);
@@ -321,13 +320,14 @@ void display() {
         cout << l.loading_time << "\t";
         cout << l.data_size << "\t";
         cout << l.execute_time_l << "\t";
-        cout << l.execute_time_s << endl;
+        cout << l.execute_time_s << "\t";
+        cout << l.energy_consumption << endl;
     }
     cout << defaultfloat;
 }
 
 int main() {
-    init_dag("./gpu.csv", "./dag");
+    init_dag("./cpu.csv", "./dag");
     make_partition(1);
     display();
     return 0;

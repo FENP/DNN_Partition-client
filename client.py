@@ -1,6 +1,7 @@
 import sys
 import time
 import ctypes
+import pickle
 import torch
 
 sys.path.append('..')
@@ -14,14 +15,14 @@ from torchvision import models, transforms
 from PIL import Image
 
 from classes import class_names
-from learning import collaborativeIntelligence
+from dnnpartition import collaborativeIntelligence
 
 def measureBandWidth():
     # 从trace文件中读取
     return 1
 
 def startClient(host, port):
-    tsocket = TSocket.TSocket(__HOST, __PORT)
+    tsocket = TSocket.TSocket(host, port)
     transport = TTransport.TBufferedTransport(tsocket)
     protocol = TBinaryProtocol.TBinaryProtocol(transport)
     client = collaborativeIntelligence.Client(protocol)
@@ -105,14 +106,14 @@ def main():
     # 初始化模型
     name = "alex"
     m = model(name)
-    m.load_weight()
+    m.loadWeight()
 
     # 切分模型
     cModel = pytorchtool.Surgery(m.model, 0)
 
     # 0: 本地执行; 1: 计算卸载 2: 边缘执行
     choice = 1
-    csv_path = './partition/gpu.csv'
+    csv_path = './partition/cpu.csv'
     dag_path = './partition/dag'
     layerState = getLayers(dag_path)
 
@@ -120,9 +121,10 @@ def main():
     csv = ctypes.c_char_p(bytes(csv_path, 'utf-8'))
     dag = ctypes.c_char_p(bytes(dag_path, 'utf-8'))
     T.init_dag(csv, dag)
+    print("DAG初始化完成")
 
     # 连接服务端
-    transport, client = startClient(host, port)
+    transport, client = startClient('localhost', 9090)
 
     for i in range(1, 6):
         print("第", str(i), "次推理")
@@ -134,7 +136,7 @@ def main():
         else:
             bandWidth = measureBandWidth()
         # 读取数据
-        m.setInput('./pandas.jpg')
+        m.setInput('../pytorchtool/pandas.jpg')
         # print("网络带宽: " + str(bandWidth) + "MB/s")
         # 进行切分决策
         T.make_partition(ctypes.c_float(bandWidth))
@@ -146,11 +148,14 @@ def main():
         # 本地执行
         output = cModel(m.x)
         middleResult = cModel.getMiddleResult()
-        if not middleResult:    # 中间结果不为空才进行计算卸载
-            # 传输中间结果获得推理结果
-            result = client.inference(middleResult)
-        else:
+
+        middleResult = {k: pickle.dumps(v) for k, v in middleResult.items()}
+
+        if not middleResult:    
             result = output
+        else:   # 中间结果不为空才进行计算卸载
+            # 传输中间结果获得推理结果
+            result = pickle.loads(client.inference(middleResult))
 
         # 打印最终结果
         print("result: " + class_names[torch.argmax(result, 1)[0]])

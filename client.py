@@ -2,6 +2,7 @@ import sys
 import time
 import ctypes
 import pickle
+import logging
 import torch
 
 sys.path.append('..')
@@ -112,7 +113,7 @@ def main():
     cModel = pytorchtool.Surgery(m.model, 0)
 
     # 0: 本地执行; 1: 计算卸载 2: 边缘执行
-    choice = 1
+    choice = 0
     csv_path = './partition/cpu.csv'
     dag_path = './partition/dag'
     layerState = getLayers(dag_path)
@@ -162,4 +163,6 @@ def main():
 
 
 if __name__ == "__main__":
+    logging.basicConfig(filename='./log',format='[%(asctime)s-%(filename)s-%(levelname)s:%(message)s]', 
+        level = logging.DEBUG,filemode='a',datefmt='%Y-%m-%d%I:%M:%S %p')
     main()

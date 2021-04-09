@@ -50,7 +50,8 @@ struct Dinic {
     void updateEdge(float bandwidth) {
         for(Edge& edge: edges) {
             if(edge.from < N && edge.to != t && edge.cap != 0)
-                edge.cap = layers[edge.from].data_size / bandwidth;
+                // 时间单位为ms
+                edge.cap = layers[edge.from].data_size / bandwidth * 1000; 
             edge.flow = 0;
         }
     }

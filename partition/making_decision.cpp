@@ -51,7 +51,7 @@ struct Dinic {
         for(Edge& edge: edges) {
             if(edge.from < N && edge.to != t && edge.cap != 0)
                 // 时间单位为ms
-                edge.cap = layers[edge.from].data_size / bandwidth * 1000; 
+                edge.cap = (layers[edge.from].data_size / bandwidth) * 1000; 
             edge.flow = 0;
         }
     }
@@ -122,7 +122,10 @@ struct Dinic {
         return flow;
     }
 
-    /* 根据切分决策更新层状态 */
+    /* 
+     * 根据切分决策更新层状态
+     * 最小割的割边一定满流, 满流的边不一定是最小割的割边 
+    */
     void getPartitionResult(int option) {
         if(option < 0 || option > 0) {
             for(int i = 1; i < N; i++) {
@@ -137,9 +140,25 @@ struct Dinic {
             }
         }
         else {
+            fill(vis.begin(), vis.end(), false);
+            queue<int> Q;
+            Q.push(s);
+            vis[s] = true;
+            while(!Q.empty()) {
+                int x = Q.front(); 
+                Q.pop();
+                for(int i = 0; i < G[x].size(); i++) {
+                    Edge& e = edges[G[x][i]];
+                    if(!vis[e.to] && e.cap > e.flow) {
+                        vis[e.to] = true;
+                        Q.push(e.to);
+                    }
+                }
+            }
+            
             for(int i = 0; i < N; i++) {
                 for(int& j : G[i]) {
-                    if(edges[j].cap != 0 && edges[j].cap == edges[j].flow) {
+                    if(edges[j].cap != 0 && vis[edges[j].from] != vis[edges[j].to]) {
                         if(edges[j].to != t)
                             layers[i].status = 1;
                         else if(layers[i].status < 0)   // 避免状态复写
@@ -149,7 +168,7 @@ struct Dinic {
             }
             /* 更新服务端执行的层 */
             for(int& i : G[s]) {
-                if(edges[i].cap == edges[i].flow)
+                if(vis[edges[i].from] != vis[edges[i].to])
                     layers[edges[i].to].status = 2;
             }
         }

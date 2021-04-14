@@ -22,6 +22,7 @@ int N, V, S, L;
 
 struct Dinic {
     int n,m,s,t;
+    bool is_time;
     vector<Edge> edges;
     vector<vector<int>> G;
     vector<bool> vis;
@@ -56,16 +57,25 @@ struct Dinic {
         }
     }
 
+    /* 更新layerId标识的层的服务端时间
+      即减去初始化时间，只保留执行时间
+    */
+    void updateEdge(int edgeId) {
+        if(is_time) {
+            edges[edgeId].cap = layers[edges[edgeId].to].execute_time_s;
+        }
+    }
+
     /* 填充Edge权重，分别以时间或能耗为衡量指标 */
-    void fillEdge(bool is_time) {
+    void fillEdge() {
         for(Edge& edge: edges) {
-            if(edge.from == S) {
+            if(edge.from == s) {
                 if(is_time)
-                    edge.cap = layers[edge.to].execute_time_s;
+                    edge.cap = layers[edge.to].execute_time_s + layers[edge.to].loading_time;
                 else
                     edge.cap = 0;
             }
-            else if(edge.to == L) {
+            else if(edge.to == t) {
                 if(is_time)
                     edge.cap = layers[edge.from].execute_time_l;
                 else
@@ -124,6 +134,7 @@ struct Dinic {
 
     /* 
      * 根据切分决策更新层状态
+     * 对于在服务端执行的层，调用updateEdge(int layerId)更新其服务端时间
      * 最小割的割边一定满流, 满流的边不一定是最小割的割边 
     */
     void getPartitionResult(int option) {
@@ -168,8 +179,10 @@ struct Dinic {
             }
             /* 更新服务端执行的层 */
             for(int& i : G[s]) {
-                if(vis[edges[i].from] != vis[edges[i].to])
+                if(vis[edges[i].from] != vis[edges[i].to]) {
                     layers[edges[i].to].status = 2;
+                    updateEdge(i);
+                }
             }
         }
     }
@@ -272,6 +285,7 @@ void init_dag(const char* csv_path, const char* dag_path) {
     // 初始化DC
     DC.init(V, S, L);
     // 默认衡量指标为时间
+    DC.is_time = true;
     for(int i = 0; i < V; i++) {
         if(i < N) {
             for(auto& v : graph[i]) {
@@ -283,7 +297,7 @@ void init_dag(const char* csv_path, const char* dag_path) {
         }
         else if(i == S) {
             for(auto& v : graph[i]) {
-                DC.AddEdge(i, v, layers[v].execute_time_s);
+                DC.AddEdge(i, v, layers[v].execute_time_s + layers[v].loading_time);
             }
         }
         else {
@@ -317,6 +331,14 @@ int getStatus(const char* name) {
     return layers[name2num[name]].status;
 }
 
+/* 更新优化目标 */
+void transform_target(bool is_time) {
+    if(is_time != DC.is_time) {
+        DC.is_time = is_time;
+        DC.fillEdge();
+    }
+}
+
 void display() {
     // 打印转化后的DAG图
     for(int i = 0; i < graph.size(); i++) {
@@ -348,7 +370,7 @@ void display() {
 
 int main() {
     init_dag("./cpu.csv", "./dag");
-    make_partition(1);
+    make_partition(20);
     display();
     return 0;
 }

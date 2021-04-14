@@ -50,6 +50,11 @@ extern "C"{
     */
     int getStatus(const char* name);
 
+    /* 更新优化目标
+     * is_time: true表示优化时间；false表示优化客户端能耗
+    */
+    void transform_target(bool is_time);
+
     /* 打印结点与DAG */
     void display();
 }

@@ -20,7 +20,7 @@ from dnnpartition import collaborativeIntelligence
 
 def measureBandWidth():
     # 从trace文件中读取
-    return 1
+    return 4.5
 
 def startClient(host, port):
     tsocket = TSocket.TSocket(host, port)
@@ -76,13 +76,15 @@ class model:
                                     init_weights=False)
             model.eval()
             self.model = model
+            self.depth = 2
         elif self.model_name in 'alexnet':
             self.model_name = 'alexnet'
             self.path = "../pytorchtool/model_weight/alexnet/alexnet-owt-4df8aa71.pth"
             
             model = models.alexnet(False)
             model.eval()
-            self.model = model 
+            self.model = model
+            self.depth = -1 
         else:
             print("Wrong model name")
     
@@ -105,17 +107,17 @@ class model:
 
 def main():
     # 初始化模型
-    name = "alex"
+    name = "in"
     m = model(name)
     m.loadWeight()
 
     # 切分模型
-    cModel = pytorchtool.Surgery(m.model, 0)
+    cModel = pytorchtool.Surgery(m.model, 0, depth = m.depth)
 
     # 0: 本地执行; 1: 计算卸载 2: 边缘执行
-    choice = 0
-    csv_path = './partition/cpu.csv'
-    dag_path = './partition/dag'
+    choice = 1
+    csv_path = '../pytorchtool/parameters/' + m.model_name + '/cpu.csv'
+    dag_path = '../pytorchtool/parameters/' + m.model_name + '/dag'
     layerState = getLayers(dag_path)
 
     T = ctypes.cdll.LoadLibrary('./partition/making_decision.so')
@@ -125,10 +127,13 @@ def main():
     print("DAG初始化完成")
 
     # 连接服务端
-    transport, client = startClient('localhost', 9090)
+    transport, client = startClient('192.168.1.16', 9090)
 
     for i in range(1, 6):
-        print("第", str(i), "次推理")
+        print("**********第", str(i), "次推理**********")
+
+        start = time.time()
+
         if choice != 1:
             if choice == 0:
                 bandWidth = 0
@@ -137,29 +142,37 @@ def main():
         else:
             bandWidth = measureBandWidth()
         # 读取数据
-        m.setInput('../pytorchtool/pandas.jpg')
-        # print("网络带宽: " + str(bandWidth) + "MB/s")
+        start_data = time.time()
+        m.setInput('../pytorchtool/zebra.jpg')
+        print("读取数据用时", time.time() - start_data)
+        print("网络带宽: " + str(bandWidth) + "MB/s")
         # 进行切分决策
+        start_dec = time.time()
         T.make_partition(ctypes.c_float(bandWidth))
+        print("切分决策用时", time.time() - start_dec)
         # 更新层状态
         updateLayerState(T, layerState)
         cModel.setLayerState(layerState)
+        # print(layerState)
         # 传输层状态
         client.partition(layerState)
         # 本地执行
+        start_in = time.time()
         output = cModel(m.x)
         middleResult = cModel.getMiddleResult()
-
-        middleResult = {k: pickle.dumps(v) for k, v in middleResult.items()}
-
-        if not middleResult:    
+        # print(middleResult)
+        if not middleResult:   
             result = output
         else:   # 中间结果不为空才进行计算卸载
             # 传输中间结果获得推理结果
+            middleResult = {k: pickle.dumps(v) for k, v in middleResult.items()}
             result = pickle.loads(client.inference(middleResult))
 
         # 打印最终结果
         print("result: " + class_names[torch.argmax(result, 1)[0]])
+        end = time.time()
+        print("推理用时", end - start_in)
+        print("总用时", end - start)
 
 
 if __name__ == "__main__":

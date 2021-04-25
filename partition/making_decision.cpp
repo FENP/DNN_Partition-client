@@ -71,7 +71,9 @@ struct Dinic {
         for(Edge& edge: edges) {
             if(edge.from == s) {
                 if(is_time)
-                    edge.cap = layers[edge.to].execute_time_s + layers[edge.to].loading_time;
+                    //TODO >
+                    // edge.cap = layers[edge.to].execute_time_s + layers[edge.to].loading_time;
+                    edge.cap = layers[edge.to].execute_time_s;
                 else
                     edge.cap = 0;
             }
@@ -297,7 +299,13 @@ void init_dag(const char* csv_path, const char* dag_path) {
         }
         else if(i == S) {
             for(auto& v : graph[i]) {
-                DC.AddEdge(i, v, layers[v].execute_time_s + layers[v].loading_time);
+                DC.AddEdge(i, v, layers[v].execute_time_s);
+                /*if(v != 0 && layers[v].execute_time_s + layers[v].loading_time > layers[v].execute_time_l) {
+                    DC.AddEdge(i, v, layers[v].execute_time_l * 0.99);
+                    cout << "err" << endl;
+                }
+                else
+                    DC.AddEdge(i, v, layers[v].execute_time_s + layers[v].loading_time);*/
             }
         }
         else {
@@ -369,8 +377,9 @@ void display() {
 }
 
 int main() {
-    init_dag("./cpu.csv", "./dag");
-    make_partition(20);
+    init_dag("../../pytorchtool/parameters/inception/cpu1.csv", "../../pytorchtool/parameters/inception/dag1");
+    // init_dag("./cputest.csv", "./dagtest");
+    make_partition(2);
     display();
     return 0;
 }

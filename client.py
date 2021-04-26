@@ -87,6 +87,11 @@ class model:
             self.depth = -1 
         else:
             print("Wrong model name")
+
+        if self.use_gpu:
+            self.model = self.model.to(0)
+            # self.x = self.x.cuda()
+            self.x = self.x.to(0)
     
     def setInput(self, path_img):
         self.x = readImage(path_img)
@@ -107,7 +112,7 @@ class model:
 
 def main():
     # 初始化模型
-    name = "in"
+    name = "alex"
     m = model(name)
     m.loadWeight()
 
@@ -115,7 +120,7 @@ def main():
     cModel = pytorchtool.Surgery(m.model, 0, depth = m.depth)
 
     # 0: 本地执行; 1: 计算卸载 2: 边缘执行
-    choice = 1
+    choice = 2
     csv_path = '../pytorchtool/parameters/' + m.model_name + '/cpu.csv'
     dag_path = '../pytorchtool/parameters/' + m.model_name + '/dag'
     layerState = getLayers(dag_path)
@@ -127,7 +132,7 @@ def main():
     print("DAG初始化完成")
 
     # 连接服务端
-    transport, client = startClient('192.168.1.16', 9090)
+    transport, client = startClient('192.168.1.121', 9090)
 
     for i in range(1, 6):
         print("**********第", str(i), "次推理**********")

@@ -1,4 +1,5 @@
 import sys
+import os
 import time
 import ctypes
 import pickle
@@ -17,6 +18,8 @@ from PIL import Image
 
 from classes import class_names
 from dnnpartition import collaborativeIntelligence
+
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 def measureBandWidth():
     # 从trace文件中读取
@@ -90,14 +93,15 @@ class model:
 
         if self.use_gpu:
             self.model = self.model.to(0)
-            # self.x = self.x.cuda()
-            self.x = self.x.to(0)
     
     def setInput(self, path_img):
         self.x = readImage(path_img)
         if self.use_gpu:
-            self.model = self.model.to(0)
             self.x = self.x.cuda()
+
+    def inference(self):
+        with torch.no_grad():
+            outputs = self.model(self.x)    
 
     def loadWeight(self):
         state_dict_read = torch.load(self.path)
@@ -111,16 +115,22 @@ class model:
         return self.x
 
 def main():
+    # t = model("alex", use_gpu=True)
+
     # 初始化模型
     name = "alex"
-    m = model(name)
+    m = model(name, use_gpu=False)
     m.loadWeight()
+
+    # 先进行一次推理
+    m.setInput('../pytorchtool/zebra.jpg')
+    output = m.inference()
 
     # 切分模型
     cModel = pytorchtool.Surgery(m.model, 0, depth = m.depth)
 
     # 0: 本地执行; 1: 计算卸载 2: 边缘执行
-    choice = 2
+    choice = 0
     csv_path = '../pytorchtool/parameters/' + m.model_name + '/cpu.csv'
     dag_path = '../pytorchtool/parameters/' + m.model_name + '/dag'
     layerState = getLayers(dag_path)
@@ -166,7 +176,7 @@ def main():
         output = cModel(m.x)
         middleResult = cModel.getMiddleResult()
         # print(middleResult)
-        if not middleResult:   
+        if not middleResult:  
             result = output
         else:   # 中间结果不为空才进行计算卸载
             # 传输中间结果获得推理结果

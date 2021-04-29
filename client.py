@@ -115,7 +115,7 @@ class model:
         return self.x
 
 def main():
-    # t = model("alex", use_gpu=True)
+    torch.randn(4).to(0)
 
     # 初始化模型
     name = "alex"
@@ -130,7 +130,7 @@ def main():
     cModel = pytorchtool.Surgery(m.model, 0, depth = m.depth)
 
     # 0: 本地执行; 1: 计算卸载 2: 边缘执行
-    choice = 0
+    choice = 1
     csv_path = '../pytorchtool/parameters/' + m.model_name + '/cpu.csv'
     dag_path = '../pytorchtool/parameters/' + m.model_name + '/dag'
     layerState = getLayers(dag_path)
@@ -144,7 +144,7 @@ def main():
     # 连接服务端
     transport, client = startClient('192.168.1.121', 9090)
 
-    for i in range(1, 6):
+    for i in range(1, 20):
         print("**********第", str(i), "次推理**********")
 
         start = time.time()
@@ -181,7 +181,9 @@ def main():
         else:   # 中间结果不为空才进行计算卸载
             # 传输中间结果获得推理结果
             middleResult = {k: pickle.dumps(v) for k, v in middleResult.items()}
+            start_sin = time.time()
             result = pickle.loads(client.inference(middleResult))
+            print("服务端时间", time.time() - start_sin)
 
         # 打印最终结果
         print("result: " + class_names[torch.argmax(result, 1)[0]])

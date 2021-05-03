@@ -1,6 +1,8 @@
+#coding:utf-8
 import sys
 import os
 import time
+import math
 import ctypes
 import pickle
 import logging
@@ -21,9 +23,29 @@ from dnnpartition import collaborativeIntelligence
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
-def measureBandWidth():
-    # 从trace文件中读取
-    return 4.5
+class bandwidthTrace:
+    def __init__(self):
+        self._bandwidth_list = []
+        for i in range(0, 60):
+            if i < 21:
+                self._bandwidth_list.append((i+10) / 30 * 4)
+            elif i < 40:
+                self._bandwidth_list.append(4 + math.sin(i % 7))
+            else:
+                self._bandwidth_list.append(5 + (i - 40) / 10)
+        
+        print(len(self._bandwidth_list))
+        self._start = time.time()
+
+    def get_bandwidth(self):
+        now_time = time.time() - self._start
+        if now_time > 60:
+            sys.exit(0)
+        return self._bandwidth_list[int(now_time)]
+
+def waitBandWidth(bandwidth, data_size):
+    sleep_time = round(data_size/bandwidth - data_size/11, 2)
+    time.sleep(sleep_time)
 
 def startClient(host, port):
     tsocket = TSocket.TSocket(host, port)
@@ -118,7 +140,7 @@ def main():
     torch.randn(4).to(0)
 
     # 初始化模型
-    name = "alex"
+    name = "in"
     m = model(name, use_gpu=False)
     m.loadWeight()
 
@@ -141,26 +163,29 @@ def main():
     T.init_dag(csv, dag)
     print("DAG初始化完成")
 
+    # 初始化trace
+    trace = bandwidthTrace()
+
     # 连接服务端
     transport, client = startClient('192.168.1.121', 9090)
 
-    for i in range(1, 20):
+    for i in range(1, 500):
         print("**********第", str(i), "次推理**********")
 
         start = time.time()
-
+        trace_bandWidth = trace.get_bandwidth()
         if choice != 1:
             if choice == 0:
                 bandWidth = 0
             else:
                 bandWidth = 10000
         else:
-            bandWidth = measureBandWidth()
+            bandWidth = trace_bandWidth
         # 读取数据
         start_data = time.time()
         m.setInput('../pytorchtool/zebra.jpg')
         print("读取数据用时", time.time() - start_data)
-        print("网络带宽: " + str(bandWidth) + "MB/s")
+        print("网络带宽: " + str(trace_bandWidth) + "MB/s")
         # 进行切分决策
         start_dec = time.time()
         T.make_partition(ctypes.c_float(bandWidth))
@@ -174,19 +199,22 @@ def main():
         # 本地执行
         start_in = time.time()
         output = cModel(m.x)
+        print("本地推理用时", time.time() - start_in)
         middleResult = cModel.getMiddleResult()
-        # print(middleResult)
+        print(middleResult)
         if not middleResult:  
             result = output
         else:   # 中间结果不为空才进行计算卸载
             # 传输中间结果获得推理结果
             middleResult = {k: pickle.dumps(v) for k, v in middleResult.items()}
             start_sin = time.time()
+            waitBandWidth(trace_bandWidth, sys.getsizeof(pickle.dumps(middleResult)) / 1024 / 1024)
             result = pickle.loads(client.inference(middleResult))
             print("服务端时间", time.time() - start_sin)
 
         # 打印最终结果
-        print("result: " + class_names[torch.argmax(result, 1)[0]])
+        result = class_names[torch.argmax(result, 1)[0]]
+        print("result: " + result)
         end = time.time()
         print("推理用时", end - start_in)
         print("总用时", end - start)

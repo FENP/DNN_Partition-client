@@ -2,7 +2,7 @@ import iperf3
 
 def measureBandWidth(server_hostname='127.0.0.1'):
     client = iperf3.Client()
-    client.duration = 1
+    client.duration = 60
     client.server_hostname = server_hostname
     client.port = 5201
     result = client.run()
